@@ -1,30 +1,36 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:zoltar/logic/game_engine.dart';
 import 'package:zoltar/main.dart';
+import 'package:zoltar/models/answer.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('mostra a tela inicial do Zoltar', (WidgetTester tester) async {
+    await tester.pumpWidget(const ZoltarApp());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(find.text('Zoltar o Grande!'), findsOneWidget);
+    expect(find.text('Começar'), findsOneWidget);
+    expect(find.byIcon(Icons.add), findsNothing);
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+  test('as respostas mudam a proxima pergunta escolhida', () {
+    final simEngine = GameEngine(random: Random(7));
+    final naoEngine = GameEngine(random: Random(7));
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    final primeiraSim = simEngine.nextQuestion();
+    final primeiraNao = naoEngine.nextQuestion();
+
+    expect(primeiraSim.id, primeiraNao.id);
+
+    simEngine.recordAnswer(primeiraSim, Answer.sim);
+    naoEngine.recordAnswer(primeiraNao, Answer.nao);
+
+    final proximaComSim = simEngine.nextQuestion();
+    final proximaComNao = naoEngine.nextQuestion();
+
+    expect(proximaComSim.id, isNot(proximaComNao.id));
   });
 }

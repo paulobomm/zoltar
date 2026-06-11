@@ -11,9 +11,9 @@ class GameEngine {
   final Map<String, double> _scores = {};
   final List<Question> _askedQuestions = [];
   final int _maxQuestions = 10;
-  final Random _random = Random();
+  final Random _random;
 
-  GameEngine() {
+  GameEngine({Random? random}) : _random = random ?? Random() {
     _remainingQuestions.shuffle();
     for (final p in _professors) {
       _scores[p.name] = 0.0;
@@ -28,7 +28,6 @@ class GameEngine {
     if (!hasMoreQuestions) return true;
     final sorted = sortedProfessors;
     if (sorted.length < 2) return true;
-    // guess if top candidate leads by a large margin after enough questions
     final diff = sorted[0].value - sorted[1].value;
     return diff > 3.0 && _askedQuestions.length >= 5;
   }
@@ -47,33 +46,23 @@ class GameEngine {
   Question nextQuestion() {
     if (_remainingQuestions.isEmpty) throw StateError('No questions left');
 
-    if (_askedQuestions.isEmpty) {
-      // start with the most discriminating question overall
-      final q = _remainingQuestions.removeAt(0);
-      _askedQuestions.add(q);
-      return q;
-    }
+    final scoredQuestions =
+        _remainingQuestions.map((q) => MapEntry(q, _questionScore(q))).toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
 
-    // Pick the question that maximises variance across current top-5 candidates
-    final top5 = sortedProfessors.take(5).map((e) => e.key).toSet();
-    final topProfessors = _professors.where((p) => top5.contains(p.name)).toList();
+    final bestScore = scoredQuestions.first.value;
+    final goodOptions =
+        scoredQuestions
+            .where((entry) => entry.value >= bestScore * 0.9)
+            .take(4)
+            .map((entry) => entry.key)
+            .toList()
+          ..shuffle(_random);
 
-    Question best = _remainingQuestions.first;
-    double bestVariance = -1;
-
-    for (final q in _remainingQuestions) {
-      final values = topProfessors.map((p) => p.traitFor(q.id)).toList();
-      // small random jitter breaks ties so equal-variance questions rotate
-      final variance = _variance(values) + _random.nextDouble() * 0.01;
-      if (variance > bestVariance) {
-        bestVariance = variance;
-        best = q;
-      }
-    }
-
-    _remainingQuestions.remove(best);
-    _askedQuestions.add(best);
-    return best;
+    final question = goodOptions.first;
+    _remainingQuestions.remove(question);
+    _askedQuestions.add(question);
+    return question;
   }
 
   void recordAnswer(Question question, Answer answer) {
@@ -81,17 +70,51 @@ class GameEngine {
       final trait = professor.traitFor(question.id);
       // trait is 0..1; centre it at 0 → -0.5..0.5
       final centredTrait = trait - 0.5;
-      _scores[professor.name] = (_scores[professor.name] ?? 0) +
-          centredTrait * answer.weight * 2;
+      _scores[professor.name] =
+          (_scores[professor.name] ?? 0) + centredTrait * answer.weight * 2;
     }
   }
 
   int get questionsAsked => _askedQuestions.length;
 
-  double _variance(List<double> values) {
-    if (values.isEmpty) return 0;
-    final mean = values.reduce((a, b) => a + b) / values.length;
-    final sq = values.map((v) => (v - mean) * (v - mean)).reduce((a, b) => a + b);
-    return sq / values.length;
+  double _questionScore(Question question) {
+    final weights = _candidateWeights();
+    var weightedMean = 0.0;
+
+    for (final professor in _professors) {
+      weightedMean +=
+          weights[professor.name]! * professor.traitFor(question.id);
+    }
+
+    var weightedVariance = 0.0;
+    for (final professor in _professors) {
+      final distance = professor.traitFor(question.id) - weightedMean;
+      weightedVariance += weights[professor.name]! * distance * distance;
+    }
+
+    final splitBalance = 1 - (weightedMean - 0.5).abs() * 2;
+    final certainty = (weightedMean - 0.5).abs() * 2;
+
+    return weightedVariance * 0.7 + splitBalance * 0.25 + certainty * 0.05;
+  }
+
+  Map<String, double> _candidateWeights() {
+    if (_askedQuestions.isEmpty) {
+      final equalWeight = 1 / _professors.length;
+      return {for (final professor in _professors) professor.name: equalWeight};
+    }
+
+    final topScore = _scores.values.reduce(max);
+    final rawWeights = <String, double>{};
+    var total = 0.0;
+
+    for (final professor in _professors) {
+      final score = _scores[professor.name] ?? 0.0;
+      final weight = exp(score - topScore);
+      rawWeights[professor.name] = weight;
+      total += weight;
+    }
+
+    return rawWeights.map((name, weight) => MapEntry(name, weight / total));
   }
 }

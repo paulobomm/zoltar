@@ -22,10 +22,29 @@ class HomeScreen extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const _CrystalBallIcon(),
+                  Container(
+                    width: 160,
+                    height: 160,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.purpleAccent.withValues(alpha: 0.7),
+                          blurRadius: 30,
+                          spreadRadius: 8,
+                        ),
+                      ],
+                    ),
+                    child: ClipOval(
+                      child: Image.asset(
+                        'Imagens_Professores/Zoltar.png',
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 24),
                   const Text(
-                    'Zoltar o Grande!',
+                    'Zoltar o Mago Adivinhador',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 36,
@@ -102,72 +121,6 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _CrystalBallIcon extends StatefulWidget {
-  const _CrystalBallIcon();
-
-  @override
-  State<_CrystalBallIcon> createState() => _CrystalBallIconState();
-}
-
-class _CrystalBallIconState extends State<_CrystalBallIcon>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _glow;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    )..repeat(reverse: true);
-    _glow = Tween<double>(begin: 0.6, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _glow,
-      builder: (context, child) {
-        return Container(
-          width: 140,
-          height: 140,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: RadialGradient(
-              colors: [
-                Colors.purpleAccent.withValues(alpha: _glow.value),
-                Colors.deepPurple.withValues(alpha: 0.6),
-                Colors.transparent,
-              ],
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.purpleAccent.withValues(alpha: _glow.value * 0.8),
-                blurRadius: 30,
-                spreadRadius: 10,
-              ),
-            ],
-          ),
-          child: const Icon(
-            Icons.auto_awesome,
-            size: 80,
-            color: Colors.amber,
-          ),
-        );
-      },
     );
   }
 }
